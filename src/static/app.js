@@ -20,11 +20,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Générer la liste des participants avec icône de suppression
+        let participantsList = '';
+        if (details.participants.length > 0) {
+          details.participants.forEach((p, idx) => {
+            participantsList += `<li class="participant-item">
+              <span>${p}</span>
+              <button class="delete-participant" title="Supprimer" data-activity="${name}" data-email="${p}">
+                <span aria-label="Supprimer" class="delete-icon">&times;</span>
+              </button>
+            </li>`;
+          });
+        } else {
+          participantsList = '<li class="no-participant">Aucun participant pour l\'instant</li>';
+        }
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <strong>Participants inscrits :</strong>
+            <ul class="participants-list">
+              ${participantsList}
+            </ul>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Rafraîchir la liste après inscription
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -78,6 +100,32 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // Gestion de la suppression d'un participant
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("delete-icon")) {
+      const button = event.target.closest("button.delete-participant");
+      const activity = button.getAttribute("data-activity");
+      const email = button.getAttribute("data-email");
+      try {
+        const response = await fetch(
+          `/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`,
+          {
+            method: "POST",
+          }
+        );
+        if (response.ok) {
+          // Rafraîchir la liste des activités
+          fetchActivities();
+        } else {
+          const result = await response.json();
+          alert(result.detail || "Erreur lors de la suppression.");
+        }
+      } catch (error) {
+        alert("Erreur réseau lors de la suppression.");
+      }
     }
   });
 
